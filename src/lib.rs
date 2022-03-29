@@ -1,6 +1,7 @@
 use serde_json::json;
 use worker::*;
 
+mod s3;
 mod utils;
 
 fn log_request(req: &Request) {
