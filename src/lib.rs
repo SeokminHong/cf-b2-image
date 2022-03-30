@@ -1,8 +1,10 @@
-use serde_json::json;
-use worker::*;
-
-mod s3;
+mod api;
+mod error;
 mod utils;
+
+use std::collections::HashMap;
+
+use worker::*;
 
 fn log_request(req: &Request) {
     console_log!(
@@ -14,8 +16,12 @@ fn log_request(req: &Request) {
     );
 }
 
+async fn get_image(image: &str, queries: HashMap<String, String>) -> Result<Response> {
+    Response::ok(format!("{}, {:?}", image, queries))
+}
+
 #[event(fetch)]
-pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Response> {
+pub async fn main(req: Request, env: Env) -> Result<Response> {
     log_request(&req);
 
     // Optionally, get more helpful error messages written to the console in the case of a panic.
@@ -31,25 +37,34 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
     // Environment bindings like KV Stores, Durable Objects, Secrets, and Variables.
     router
         .get("/", |_, _| Response::ok("Hello from Workers!"))
-        .post_async("/form/:field", |mut req, ctx| async move {
-            if let Some(name) = ctx.param("field") {
-                let form = req.form_data().await?;
-                match form.get(name) {
-                    Some(FormEntry::Field(value)) => {
-                        return Response::from_json(&json!({ name: value }))
-                    }
-                    Some(FormEntry::File(_)) => {
-                        return Response::error("`field` param in form shouldn't be a File", 422);
-                    }
-                    None => return Response::error("Bad Request", 400),
-                }
-            }
+        .get_async("/images/:image", |req, ctx| async move {
+            let image = ctx
+                .param("image")
+                .ok_or_else(|| Error::RustError("Missing required parameter: image".to_string()))?;
 
-            Response::error("Bad Request", 400)
+            let url = req.url()?;
+            let queries = url
+                .query_pairs()
+                .map(|(k, v)| (k.into_owned(), v.into_owned()))
+                .collect::<HashMap<_, _>>();
+
+            get_image(image, queries).await
         })
-        .get("/worker-version", |_, ctx| {
-            let version = ctx.var("WORKERS_RS_VERSION")?.to_string();
-            Response::ok(version)
+        .post_async("/upload", |mut req, ctx| async move {
+            let headers = req.headers();
+            let filename = headers.get("X-File-Name")?.ok_or_else(|| {
+                Error::RustError("Missing required header: X-File-Name".to_string())
+            })?;
+            let scope = headers
+                .get("X-Scope")?
+                .ok_or_else(|| Error::RustError("Missing required header: X-Scope".to_string()))?;
+            let body = req.bytes().await?;
+
+            if api::upload(&ctx, body, &scope, &filename).await.is_ok() {
+                Response::ok(String::from(""))
+            } else {
+                Response::error("", 500)
+            }
         })
         .run(req, env)
         .await

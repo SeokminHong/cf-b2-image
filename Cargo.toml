@@ -2,7 +2,7 @@
 name = "image-cache"
 version = "0.1.0"
 authors = ["Seokmin Hong <ghdtjrald240@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -11,10 +11,15 @@ crate-type = ["cdylib", "rlib"]
 default = ["console_error_panic_hook"]
 
 [dependencies]
-cfg-if = "0.1.2"
-worker = { git = "https://github.com/ByteAlex/workers-rs", branch = "cass/cache-api" }
+cfg-if = "1.0.0"
+worker = { git = "https://github.com/cloudflare/workers-rs", branch = "cass/cache-api" }
+serde = { version = "1.0.136", featuers = ["derive"] }
 serde_json = "1.0.67"
-aws-sdk-s3 = "0.9.0"
+image = "0.24.1"
+mime_guess = "2.0.4"
+sha-1 = "0.10.0"
+futures = "0.3.21"
+base64 = "0.13.0"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
