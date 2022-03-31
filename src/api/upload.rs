@@ -81,6 +81,11 @@ pub async fn upload<D>(
             StoredImage {
                 id: res.file_id.clone(),
                 name: filename.to_string(),
+                format: format
+                    .extensions_str()
+                    .first()
+                    .expect("Unsupported format")
+                    .to_string(),
                 width,
                 variants,
             },

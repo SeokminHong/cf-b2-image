@@ -16,6 +16,7 @@ pub use upload::upload;
 pub struct StoredImage {
     pub id: String,
     pub name: String,
+    pub format: String,
     pub width: u32,
     pub variants: Vec<u32>,
 }
