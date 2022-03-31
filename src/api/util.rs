@@ -41,22 +41,15 @@ fn encode_hex(bytes: &[u8]) -> String {
     s
 }
 
-pub fn get_filename_and_ext(
-    scope: &str,
-    filename: &str,
-    format: &ImageFormat,
-) -> Result<(String, String)> {
-    let mut path = scope.to_string();
-    path.push('/');
-    path.push_str(filename);
-
+pub fn get_filename_and_ext(filename: &str, format: &ImageFormat) -> Result<(String, String)> {
+    let filename = filename.to_string();
     let extensions = format.extensions_str();
     let ext = extensions.iter().find(|&ext| filename.ends_with(*ext));
     let (name, ext) = if let Some(&ext) = ext {
-        (path[..(ext.len() + 1)].to_string(), ext)
+        (filename[..(ext.len() + 1)].to_string(), ext)
     } else {
         (
-            path,
+            filename,
             *extensions
                 .first()
                 .ok_or_else(|| Error::InternalError("Cannot get extension".into()))?,

@@ -21,17 +21,13 @@ async fn get_image<D>(
     image: &str,
     queries: HashMap<String, String>,
 ) -> error::Result<Response> {
-    let scope = queries
-        .get("scope")
-        .ok_or_else(|| Error::RustError("parameter scope is not provided.".into()))
-        .map(|s| s.to_owned())?;
     let width = queries
         .get("width")
         .map(|s| s.parse::<u32>())
         .map_or(Ok(None), |v| v.map(Some))
         .map_err(|_| Error::RustError("Non numeric parameter is provided".into()))?;
 
-    api::get(ctx, &scope, image, width).await
+    api::get(ctx, image, width).await
 }
 
 #[event(fetch)]
@@ -74,19 +70,11 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
             let filename = headers.get("X-File-Name")?.ok_or_else(|| {
                 Error::RustError("Missing required header: X-File-Name".to_string())
             })?;
-            let scope = headers
-                .get("X-Scope")?
-                .ok_or_else(|| Error::RustError("Missing required header: X-Scope".to_string()))?;
             let body = req.bytes().await?;
 
-            console_log!(
-                "Filename: {}, Scope: {}, Length: {}",
-                filename,
-                scope,
-                body.len()
-            );
+            console_log!("Filename: {}, Length: {}", filename, body.len());
 
-            match api::upload(&ctx, body, &scope, &filename).await {
+            match api::upload(&ctx, body, &filename).await {
                 Ok(id) => Response::ok(id),
                 Err(e) => match e {
                     error::Error::AuthError(e) => Response::error(e, 403),

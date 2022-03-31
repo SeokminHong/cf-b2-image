@@ -25,12 +25,7 @@ struct UploadFileResponse {
     pub file_name: String,
 }
 
-pub async fn upload<D>(
-    ctx: &RouteContext<D>,
-    file: Vec<u8>,
-    scope: &str,
-    filename: &str,
-) -> Result<String> {
+pub async fn upload<D>(ctx: &RouteContext<D>, file: Vec<u8>, filename: &str) -> Result<String> {
     let auth = authorize(ctx).await?;
 
     let format = image::guess_format(&file)?;
@@ -39,7 +34,7 @@ pub async fn upload<D>(
     let image = image::load_from_memory_with_format(&file, format)?;
     console_log!("Image loaded: {} bytes", image.as_bytes().len());
 
-    let (name, ext) = util::get_filename_and_ext(scope, filename, &format)?;
+    let (name, ext) = util::get_filename_and_ext(filename, &format)?;
     let mime = mime_guess::from_ext(&ext)
         .first_or_octet_stream()
         .to_string();

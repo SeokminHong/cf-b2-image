@@ -8,12 +8,7 @@ use super::util;
 use super::{ImageInfo, IMAGE_NS};
 use crate::error::{Error, Result};
 
-pub async fn get<D>(
-    ctx: &RouteContext<D>,
-    scope: &str,
-    filename: &str,
-    width: Option<u32>,
-) -> Result<Response> {
+pub async fn get<D>(ctx: &RouteContext<D>, filename: &str, width: Option<u32>) -> Result<Response> {
     let auth = authorize(ctx).await?;
 
     let mut image_info: ImageInfo = ctx
@@ -24,16 +19,15 @@ pub async fn get<D>(
         .as_json()?;
     console_log!("Image info: {:?}", image_info);
     let format = image::ImageFormat::from_extension(&image_info.format).expect("Invalid format");
-    let name = format!("{}/{}", scope, filename);
 
     match width {
         Some(w) => {
             if image_info.width <= w {
-                download_file(&name, "orig", &image_info.format, &auth).await
+                download_file(filename, "orig", &image_info.format, &auth).await
             } else if image_info.variants.contains(&w) {
-                download_file(&name, &w.to_string(), &image_info.format, &auth).await
+                download_file(filename, &w.to_string(), &image_info.format, &auth).await
             } else {
-                let mut res = download_file(&name, "orig", &image_info.format, &auth).await?;
+                let mut res = download_file(filename, "orig", &image_info.format, &auth).await?;
                 if res.status_code() >= 400 {
                     Err(Error::InternalError("Original image not found.".into()))
                 } else {
@@ -44,7 +38,7 @@ pub async fn get<D>(
                     resized.write_to(&mut writer, format)?;
                     let buffer = writer.into_inner();
 
-                    upload::upload(ctx, buffer.clone(), scope, filename).await?;
+                    upload::upload(ctx, buffer.clone(), filename).await?;
                     image_info.variants.push(w);
                     let kv_data = serde_json::to_string(&image_info)?;
 
@@ -55,7 +49,7 @@ pub async fn get<D>(
                 }
             }
         }
-        None => download_file(&name, "orig", &image_info.format, &auth).await,
+        None => download_file(filename, "orig", &image_info.format, &auth).await,
     }
 }
 
