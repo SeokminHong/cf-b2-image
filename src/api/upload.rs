@@ -73,6 +73,7 @@ pub async fn upload<D>(
     // Resize and upload image variants on a separate thread
     thread::spawn(move || {
         t_variants.iter().for_each(|&w| {
+            console_log!("Resizing {} to {}", t_name, w);
             let resized = util::resize(&t_image, w);
             let ret = block_on(upload_file(
                 resized,
@@ -84,6 +85,8 @@ pub async fn upload<D>(
             ));
             if ret.is_err() {
                 console_log!("Failed to upload image variant: {}", w);
+            } else {
+                console_log!("Uploaded image variant: {}", w);
             }
         })
     });
@@ -98,6 +101,7 @@ pub async fn upload<D>(
             variants: variants.iter().copied().collect::<Vec<_>>(),
         },
     )?;
+    console_log!("Uploaded {}", filename);
 
     Ok(res.file_id)
 }

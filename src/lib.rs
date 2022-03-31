@@ -60,10 +60,19 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                 .ok_or_else(|| Error::RustError("Missing required header: X-Scope".to_string()))?;
             let body = req.bytes().await?;
 
-            if api::upload(&ctx, body, &scope, &filename).await.is_ok() {
-                Response::ok(String::from(""))
-            } else {
-                Response::error("", 500)
+            console_log!(
+                "Filename: {}, Scope: {}, Length: {}",
+                filename,
+                scope,
+                body.len()
+            );
+
+            match api::upload(&ctx, body, &scope, &filename).await {
+                Ok(id) => Response::ok(id),
+                Err(e) => match e {
+                    error::Error::AuthError(e) => Response::error(e, 403),
+                    error::Error::InternalError(e) => Response::error(e.to_string(), 500),
+                },
             }
         })
         .run(req, env)
