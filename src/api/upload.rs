@@ -75,23 +75,19 @@ pub async fn upload<D>(
         }
     }
     let res = upload_file(&image.into_bytes(), &auth, &mime, &name, "orig", &ext).await?;
-    ctx.kv(IMAGE_NS)?
-        .put(
-            &name,
-            ImageInfo {
-                id: res.file_id.clone(),
-                name: filename.to_string(),
-                format: format
-                    .extensions_str()
-                    .first()
-                    .expect("Unsupported format")
-                    .to_string(),
-                width,
-                variants,
-            },
-        )?
-        .execute()
-        .await?;
+
+    let kv_data = serde_json::to_string(&ImageInfo {
+        id: res.file_id.clone(),
+        name: filename.to_string(),
+        format: format
+            .extensions_str()
+            .first()
+            .expect("Unsupported format")
+            .to_string(),
+        width,
+        variants,
+    })?;
+    ctx.kv(IMAGE_NS)?.put(&name, kv_data)?.execute().await?;
 
     console_log!("Uploaded {}", filename);
 

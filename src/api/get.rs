@@ -45,12 +45,10 @@ pub async fn get<D>(
 
                     upload::upload(ctx, buffer.clone(), scope, filename).await?;
                     image_info.variants.push(w);
+                    let kv_data = serde_json::to_string(&image_info)?;
 
                     // Update KV variant
-                    ctx.kv(IMAGE_NS)?
-                        .put(filename, image_info.clone())?
-                        .execute()
-                        .await?;
+                    ctx.kv(IMAGE_NS)?.put(filename, kv_data)?.execute().await?;
 
                     Response::from_bytes(buffer).map_err(|e| e.into())
                 }
