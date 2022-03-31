@@ -6,6 +6,7 @@
 - [ ] Cache images by using Cloudflare Cache API
 - [ ] Make jobs asynchronously
 - [ ] Implement detailed responses
+- [ ] Authorize POST request
 
 ## Deploy
 
