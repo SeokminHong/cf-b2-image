@@ -69,7 +69,9 @@ pub async fn upload<D>(ctx: &RouteContext<D>, file: Vec<u8>, filename: &str) -> 
             console_log!("Uploaded image variant: {}", w);
         }
     }
-    let res = upload_file(&image.into_bytes(), &auth, &mime, &name, "orig", &ext).await?;
+    let mut writer = Cursor::new(Vec::new());
+    image.write_to(&mut writer, format)?;
+    let res = upload_file(&writer.into_inner(), &auth, &mime, &name, "orig", &ext).await?;
 
     let kv_data = serde_json::to_string(&ImageInfo {
         id: res.file_id.clone(),
