@@ -36,11 +36,11 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
     // functionality and a `RouteContext` which you can use to  and get route parameters and
     // Environment bindings like KV Stores, Durable Objects, Secrets, and Variables.
     router
-        .get("/", |_, _| Response::ok("Hello from Workers!"))
+        .get("/", |_, _| Response::ok(""))
         .get_async("/images/:image", |req, ctx| async move {
-            let image = ctx
-                .param("image")
-                .ok_or_else(|| Error::RustError("Missing required parameter: image".to_string()))?;
+            let image = ctx.param("image").ok_or_else(|| {
+                Error::RustError("Missing required parameter: images/:image".to_string())
+            })?;
 
             let url = req.url()?;
             let queries = url

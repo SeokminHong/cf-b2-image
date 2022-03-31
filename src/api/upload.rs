@@ -22,6 +22,7 @@ struct UploadUrlResponse {
 #[serde(rename_all = "camelCase")]
 struct UploadFileResponse {
     pub file_id: String,
+    pub file_name: String,
 }
 
 pub async fn upload<D>(
@@ -97,7 +98,7 @@ pub async fn upload<D>(
                 id: res.file_id.clone(),
                 name: filename.to_string(),
                 width,
-                variants: variants.iter().copied().collect::<Vec<_>>(),
+                variants,
             },
         )?
         .execute()
