@@ -59,7 +59,7 @@ pub async fn upload<D>(
         resized.write_to(&mut writer, format)?;
         console_log!("Resize to {}", *w);
         let ret = upload_file(
-            writer.into_inner(),
+            &writer.into_inner(),
             &auth,
             &mime,
             &name,
@@ -74,7 +74,7 @@ pub async fn upload<D>(
             console_log!("Uploaded image variant: {}", w);
         }
     }
-    let res = upload_file(image.into_bytes(), &auth, &mime, &name, "orig", &ext).await?;
+    let res = upload_file(&image.into_bytes(), &auth, &mime, &name, "orig", &ext).await?;
     ctx.kv(IMAGE_NS)?
         .put(
             &name,
@@ -125,7 +125,7 @@ async fn get_upload_url(auth: &AuthResponse) -> Result<UploadUrlResponse> {
 }
 
 async fn upload_file(
-    file: Vec<u8>,
+    file: &[u8],
     auth: &AuthResponse,
     mime: &str,
     name: &str,
@@ -136,7 +136,7 @@ async fn upload_file(
     let mut headers = Headers::new();
     headers.set("Authorization", upload_url_res.authorization_token.as_str())?;
     headers.set("Content-Type", mime)?;
-    let hash = util::get_hash(&file)?;
+    let hash = util::get_hash(file)?;
     headers.set(
         "X-Bz-File-Name",
         format!("{}-{}.{}", name, suffix, ext).as_str(),
@@ -144,7 +144,7 @@ async fn upload_file(
     headers.set("X-Bz-Content-Sha1", hash.as_str())?;
 
     let mut init = RequestInit::new();
-    init.with_body(Some(util::bytes_to_js_value(&file)))
+    init.with_body(Some(util::bytes_to_js_value(file)))
         .with_method(Method::Post)
         .with_headers(headers);
 
