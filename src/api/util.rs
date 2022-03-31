@@ -1,12 +1,12 @@
 use std::fmt::Write;
 
 use image::imageops;
-use image::{DynamicImage, ImageBuffer, Rgba};
+use image::{DynamicImage, ImageBuffer, ImageFormat, Rgba};
 use sha1::{Digest, Sha1};
 use worker::js_sys::Uint8Array;
 use worker::wasm_bindgen::JsValue;
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 
 pub fn resize(image: &DynamicImage, new_width: u32) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     let width = image.width();
@@ -39,4 +39,29 @@ fn encode_hex(bytes: &[u8]) -> String {
         write!(&mut s, "{:02x}", b).unwrap();
     }
     s
+}
+
+pub fn get_filename_and_ext(
+    scope: &str,
+    filename: &str,
+    format: &ImageFormat,
+) -> Result<(String, String)> {
+    let mut path = scope.to_string();
+    path.push('/');
+    path.push_str(filename);
+
+    let extensions = format.extensions_str();
+    let ext = extensions.iter().find(|&ext| filename.ends_with(*ext));
+    let (name, ext) = if let Some(&ext) = ext {
+        (path[..(ext.len() + 1)].to_string(), ext)
+    } else {
+        (
+            path,
+            *extensions
+                .first()
+                .ok_or_else(|| Error::InternalError("Cannot get extension".into()))?,
+        )
+    };
+
+    Ok((name, ext.to_string()))
 }

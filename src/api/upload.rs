@@ -9,7 +9,7 @@ use super::auth::{authorize, AuthResponse};
 use super::util;
 use super::StoredImage;
 use super::{IMAGE_NS, WIDTHS};
-use crate::error::{Error, Result};
+use crate::error::Result;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -34,29 +34,13 @@ pub async fn upload<D>(
     let auth = authorize(ctx).await?;
 
     let format = image::guess_format(&file)?;
+
     console_log!("Image format: {}", format.extensions_str().first().unwrap());
     let image = image::load_from_memory_with_format(&file, format)?;
     console_log!("Image loaded: {} bytes", image.as_bytes().len());
 
-    let mut path = scope.to_string();
-    path.push('/');
-    path.push_str(filename);
-
-    console_log!("Image path: {}", path);
-
-    let extensions = format.extensions_str();
-    let ext = extensions.iter().find(|&ext| filename.ends_with(*ext));
-    let (name, ext) = if let Some(&ext) = ext {
-        (path[..(ext.len() + 1)].to_string(), ext)
-    } else {
-        (
-            path,
-            *extensions
-                .first()
-                .ok_or_else(|| Error::InternalError("Cannot get extension".into()))?,
-        )
-    };
-    let mime = mime_guess::from_ext(ext)
+    let (name, ext) = util::get_filename_and_ext(scope, filename, &format)?;
+    let mime = mime_guess::from_ext(&ext)
         .first_or_octet_stream()
         .to_string();
 
@@ -80,7 +64,7 @@ pub async fn upload<D>(
             &mime,
             &name,
             &w.to_string(),
-            ext,
+            &ext,
         )
         .await;
 
@@ -90,7 +74,7 @@ pub async fn upload<D>(
             console_log!("Uploaded image variant: {}", w);
         }
     }
-    let res = upload_file(image.into_bytes(), &auth, &mime, &name, "orig", ext).await?;
+    let res = upload_file(image.into_bytes(), &auth, &mime, &name, "orig", &ext).await?;
     ctx.kv(IMAGE_NS)?
         .put(
             &name,
