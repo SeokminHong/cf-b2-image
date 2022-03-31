@@ -23,11 +23,12 @@ pub async fn get<D>(ctx: &RouteContext<D>, filename: &str, width: Option<u32>) -
     match width {
         Some(w) => {
             if image_info.width <= w {
-                download_file(filename, "orig", &image_info.format, &auth).await
+                download_file(&image_info.name, "orig", &image_info.format, &auth).await
             } else if image_info.variants.contains(&w) {
-                download_file(filename, &w.to_string(), &image_info.format, &auth).await
+                download_file(&image_info.name, &w.to_string(), &image_info.format, &auth).await
             } else {
-                let mut res = download_file(filename, "orig", &image_info.format, &auth).await?;
+                let mut res =
+                    download_file(&image_info.name, "orig", &image_info.format, &auth).await?;
                 if res.status_code() >= 400 {
                     Err(Error::InternalError("Original image not found.".into()))
                 } else {
@@ -49,7 +50,7 @@ pub async fn get<D>(ctx: &RouteContext<D>, filename: &str, width: Option<u32>) -
                 }
             }
         }
-        None => download_file(filename, "orig", &image_info.format, &auth).await,
+        None => download_file(&image_info.name, "orig", &image_info.format, &auth).await,
     }
 }
 
@@ -65,10 +66,11 @@ async fn download_file(
     headers.set("Authorization", &auth.authorization_token)?;
     init.with_headers(headers);
 
-    let req = Request::new_with_init(
-        &format!("{}/{}-{}.{}", auth.download_url, name, variant, ext),
-        &init,
-    )?;
+    let url = format!(
+        "{}/file/{}/{}-{}.{}",
+        auth.download_url, auth.allowed.bucket_name, name, variant, ext
+    );
+    let req = Request::new_with_init(&url, &init)?;
 
     Fetch::Request(req).send().await.map_err(|e| e.into())
 }
