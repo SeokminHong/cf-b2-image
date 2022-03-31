@@ -3,6 +3,11 @@ type = "javascript"
 workers_dev = true
 compatibility_date = "2022-03-29"
 
+kv_namespaces = [
+    { binding = "CREDENTIALS", id = "e9faec6540b44e4ea0da94dec31aa5af" },
+    { binding = "IMAGE", id = "67ece84824dc4fdaa955fa522ba754d8" },
+]
+
 [vars]
 WORKERS_RS_VERSION = "0.0.9"
 
@@ -20,7 +25,3 @@ type = "CompiledWasm"
 
 # read more about configuring your Worker via wrangler.toml at:
 # https://developers.cloudflare.com/workers/cli-wrangler/configuration
-kv_namespaces = [
-    { binding = "CREDENTIALS", id = "e9faec6540b44e4ea0da94dec31aa5af" },
-    { binding = "IMAGE", id = "67ece84824dc4fdaa955fa522ba754d8" },
-]
