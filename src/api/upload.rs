@@ -1,7 +1,6 @@
+use std::io::Cursor;
 use std::str;
-use std::thread;
 
-use futures::executor::block_on;
 use serde::{Deserialize, Serialize};
 use worker::wasm_bindgen::JsValue;
 use worker::*;
@@ -12,14 +11,14 @@ use super::StoredImage;
 use super::{IMAGE_NS, WIDTHS};
 use crate::error::{Error, Result};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct UploadUrlResponse {
     pub upload_url: String,
     pub authorization_token: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct UploadFileResponse {
     pub file_id: String,
@@ -34,11 +33,15 @@ pub async fn upload<D>(
     let auth = authorize(ctx).await?;
 
     let format = image::guess_format(&file)?;
+    console_log!("Image format: {}", format.extensions_str().first().unwrap());
     let image = image::load_from_memory_with_format(&file, format)?;
+    console_log!("Image loaded: {} bytes", image.as_bytes().len());
 
     let mut path = scope.to_string();
     path.push('/');
     path.push_str(filename);
+
+    console_log!("Image path: {}", path);
 
     let extensions = format.extensions_str();
     let ext = extensions.iter().find(|&ext| filename.ends_with(*ext));
@@ -63,34 +66,29 @@ pub async fn upload<D>(
         .copied()
         .collect::<Vec<_>>();
 
-    // Copy variables for threading
-    let t_image = image.clone();
-    let t_variants = variants.clone();
-    let t_auth = auth.clone();
-    let t_name = name.clone();
-    let t_mime = mime.clone();
-    let t_ext = ext.to_string();
-    // Resize and upload image variants on a separate thread
-    thread::spawn(move || {
-        t_variants.iter().for_each(|&w| {
-            console_log!("Resizing {} to {}", t_name, w);
-            let resized = util::resize(&t_image, w);
-            let ret = block_on(upload_file(
-                resized,
-                &t_auth,
-                &t_mime,
-                &t_name,
-                &w.to_string(),
-                &t_ext,
-            ));
-            if ret.is_err() {
-                console_log!("Failed to upload image variant: {}", w);
-            } else {
-                console_log!("Uploaded image variant: {}", w);
-            }
-        })
-    });
+    console_log!("Width: {}, Variants: {:?}", width, variants);
 
+    for w in variants.iter() {
+        let resized = util::resize(&image, *w);
+        let mut writer = Cursor::new(Vec::new());
+        resized.write_to(&mut writer, format)?;
+        console_log!("Resize to {}", *w);
+        let ret = upload_file(
+            writer.into_inner(),
+            &auth,
+            &mime,
+            &name,
+            &w.to_string(),
+            ext,
+        )
+        .await;
+
+        if ret.is_err() {
+            console_log!("Failed to upload image variant: {}", w);
+        } else {
+            console_log!("Uploaded image variant: {}", w);
+        }
+    }
     let res = upload_file(image.into_bytes(), &auth, &mime, &name, "orig", ext).await?;
     ctx.kv(IMAGE_NS)?.put(
         &name,
@@ -101,6 +99,7 @@ pub async fn upload<D>(
             variants: variants.iter().copied().collect::<Vec<_>>(),
         },
     )?;
+
     console_log!("Uploaded {}", filename);
 
     Ok(res.file_id)
@@ -110,6 +109,8 @@ async fn get_upload_url(auth: &AuthResponse) -> Result<UploadUrlResponse> {
     let mut headers = Headers::new();
     headers.set("Authorization", auth.authorization_token.as_str())?;
 
+    console_log!("{{\"bucketId\": \"{}\"}}", auth.allowed.bucket_id);
+
     let mut init = RequestInit::new();
     init.with_method(Method::Post)
         .with_headers(headers)
@@ -117,7 +118,10 @@ async fn get_upload_url(auth: &AuthResponse) -> Result<UploadUrlResponse> {
             "{{\"bucketId\": \"{}\"}}",
             auth.allowed.bucket_id
         ))));
-    let req = Request::new_with_init(auth.api_url.as_str(), &init)?;
+    let req = Request::new_with_init(
+        &format!("{}/b2api/v2/b2_get_upload_url", auth.api_url),
+        &init,
+    )?;
 
     Fetch::Request(req)
         .send()
@@ -153,10 +157,12 @@ async fn upload_file(
 
     let req = Request::new_with_init(upload_url_res.upload_url.as_str(), &init)?;
 
-    Fetch::Request(req)
+    let res = Fetch::Request(req)
         .send()
         .await?
         .json::<UploadFileResponse>()
-        .await
-        .map_err(|e| e.into())
+        .await;
+    console_log!("Upload result: {:?}", res);
+
+    res.map_err(|e| e.into())
 }

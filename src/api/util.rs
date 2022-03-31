@@ -1,23 +1,22 @@
 use std::fmt::Write;
 
 use image::imageops;
-use image::DynamicImage;
+use image::{DynamicImage, ImageBuffer, Rgba};
 use sha1::{Digest, Sha1};
 use worker::js_sys::Uint8Array;
 use worker::wasm_bindgen::JsValue;
 
 use crate::error::Result;
 
-pub fn resize(image: &DynamicImage, new_width: u32) -> Vec<u8> {
+pub fn resize(image: &DynamicImage, new_width: u32) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     let width = image.width();
     let height = image.height();
-    let resized = imageops::resize(
+    imageops::resize(
         image,
         new_width,
-        height * (new_width / width),
+        (height as f64 * (new_width as f64 / width as f64)) as u32,
         imageops::CatmullRom,
-    );
-    resized.into_raw()
+    )
 }
 
 pub fn bytes_to_js_value(bytes: &[u8]) -> JsValue {
