@@ -90,15 +90,18 @@ pub async fn upload<D>(
         }
     }
     let res = upload_file(image.into_bytes(), &auth, &mime, &name, "orig", ext).await?;
-    ctx.kv(IMAGE_NS)?.put(
-        &name,
-        StoredImage {
-            id: res.file_id.clone(),
-            name: filename.to_string(),
-            width,
-            variants: variants.iter().copied().collect::<Vec<_>>(),
-        },
-    )?;
+    ctx.kv(IMAGE_NS)?
+        .put(
+            &name,
+            StoredImage {
+                id: res.file_id.clone(),
+                name: filename.to_string(),
+                width,
+                variants: variants.iter().copied().collect::<Vec<_>>(),
+            },
+        )?
+        .execute()
+        .await?;
 
     console_log!("Uploaded {}", filename);
 
