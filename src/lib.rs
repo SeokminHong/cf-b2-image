@@ -52,6 +52,7 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
     router
         .get("/", |_, _| Response::ok(""))
         .get_async("/images/:image", |req, ctx| async move {
+            console_log!("url: {}", req.url()?.to_string());
             let image = ctx.param("image").ok_or_else(|| {
                 Error::RustError("Missing required parameter: images/:image".to_string())
             })?;
@@ -61,6 +62,8 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                 .query_pairs()
                 .map(|(k, v)| (k.into_owned(), v.into_owned()))
                 .collect::<HashMap<_, _>>();
+
+            console_log!("Filename: {}, Queries: {:?}", image, queries);
 
             get_image(&ctx, image, queries)
                 .await

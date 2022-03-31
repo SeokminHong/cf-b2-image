@@ -14,7 +14,7 @@ pub use get::get;
 use serde::{Deserialize, Serialize};
 pub use upload::upload;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ImageInfo {
     pub id: String,
     pub name: String,

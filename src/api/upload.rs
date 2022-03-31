@@ -78,7 +78,7 @@ pub async fn upload<D>(
 
     let kv_data = serde_json::to_string(&ImageInfo {
         id: res.file_id.clone(),
-        name: filename.to_string(),
+        name,
         format: format
             .extensions_str()
             .first()
@@ -87,7 +87,7 @@ pub async fn upload<D>(
         width,
         variants,
     })?;
-    ctx.kv(IMAGE_NS)?.put(&name, kv_data)?.execute().await?;
+    ctx.kv(IMAGE_NS)?.put(filename, kv_data)?.execute().await?;
 
     console_log!("Uploaded {}", filename);
 

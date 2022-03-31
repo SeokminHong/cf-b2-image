@@ -22,17 +22,18 @@ pub async fn get<D>(
         .await?
         .ok_or_else(|| Error::InternalError("File not found.".into()))?
         .as_json()?;
+    console_log!("Image info: {:?}", image_info);
     let format = image::ImageFormat::from_extension(&image_info.format).expect("Invalid format");
-    let (name, ext) = util::get_filename_and_ext(scope, filename, &format)?;
+    let name = format!("{}/{}", scope, filename);
 
     match width {
         Some(w) => {
             if image_info.width <= w {
-                download_file(&name, "orig", &ext, &auth).await
+                download_file(&name, "orig", &image_info.format, &auth).await
             } else if image_info.variants.contains(&w) {
-                download_file(&name, &w.to_string(), &ext, &auth).await
+                download_file(&name, &w.to_string(), &image_info.format, &auth).await
             } else {
-                let mut res = download_file(&name, "orig", &ext, &auth).await?;
+                let mut res = download_file(&name, "orig", &image_info.format, &auth).await?;
                 if res.status_code() >= 400 {
                     Err(Error::InternalError("Original image not found.".into()))
                 } else {
@@ -54,7 +55,7 @@ pub async fn get<D>(
                 }
             }
         }
-        None => download_file(&name, "orig", &ext, &auth).await,
+        None => download_file(&name, "orig", &image_info.format, &auth).await,
     }
 }
 
@@ -64,12 +65,16 @@ async fn download_file(
     ext: &str,
     auth: &AuthResponse,
 ) -> Result<Response> {
+    console_log!("Download variant {}", variant);
     let mut init = RequestInit::new();
     let mut headers = Headers::new();
     headers.set("Authorization", &auth.authorization_token)?;
     init.with_headers(headers);
 
-    let req = Request::new_with_init(&format!("{}-{}.{}", name, variant, ext), &init)?;
+    let req = Request::new_with_init(
+        &format!("{}/{}-{}.{}", auth.download_url, name, variant, ext),
+        &init,
+    )?;
 
     Fetch::Request(req).send().await.map_err(|e| e.into())
 }
