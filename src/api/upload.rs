@@ -7,7 +7,7 @@ use worker::*;
 
 use super::auth::{authorize, AuthResponse};
 use super::util;
-use super::StoredImage;
+use super::ImageInfo;
 use super::{IMAGE_NS, WIDTHS};
 use crate::error::Result;
 
@@ -78,7 +78,7 @@ pub async fn upload<D>(
     ctx.kv(IMAGE_NS)?
         .put(
             &name,
-            StoredImage {
+            ImageInfo {
                 id: res.file_id.clone(),
                 name: filename.to_string(),
                 format: format

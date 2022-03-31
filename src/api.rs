@@ -1,4 +1,5 @@
 mod auth;
+mod get;
 mod upload;
 mod util;
 
@@ -9,11 +10,12 @@ const IMAGE_NS: &str = "IMAGE";
 const WIDTHS: &[u32] = &[320, 640, 1280, 1920];
 
 pub use auth::authorize;
+pub use get::get;
 use serde::{Deserialize, Serialize};
 pub use upload::upload;
 
-#[derive(Serialize, Deserialize)]
-pub struct StoredImage {
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ImageInfo {
     pub id: String,
     pub name: String,
     pub format: String,

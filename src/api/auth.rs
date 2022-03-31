@@ -10,12 +10,14 @@ pub struct AuthResponse {
     pub api_url: String,
     pub authorization_token: String,
     pub allowed: AllowedBucket,
+    pub download_url: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AllowedBucket {
     pub bucket_id: String,
+    pub bucket_name: String,
 }
 
 pub async fn authorize<D>(ctx: &RouteContext<D>) -> Result<AuthResponse> {

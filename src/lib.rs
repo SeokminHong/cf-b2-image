@@ -16,8 +16,22 @@ fn log_request(req: &Request) {
     );
 }
 
-async fn get_image(image: &str, queries: HashMap<String, String>) -> Result<Response> {
-    Response::ok(format!("{}, {:?}", image, queries))
+async fn get_image<D>(
+    ctx: &RouteContext<D>,
+    image: &str,
+    queries: HashMap<String, String>,
+) -> error::Result<Response> {
+    let scope = queries
+        .get("scope")
+        .ok_or_else(|| Error::RustError("parameter scope is not provided.".into()))
+        .map(|s| s.to_owned())?;
+    let width = queries
+        .get("width")
+        .map(|s| s.parse::<u32>())
+        .map_or(Ok(None), |v| v.map(Some))
+        .map_err(|_| Error::RustError("Non numeric parameter is provided".into()))?;
+
+    api::get(ctx, &scope, image, width).await
 }
 
 #[event(fetch)]
@@ -48,7 +62,9 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                 .map(|(k, v)| (k.into_owned(), v.into_owned()))
                 .collect::<HashMap<_, _>>();
 
-            get_image(image, queries).await
+            get_image(&ctx, image, queries)
+                .await
+                .map_err(|_| Error::RustError("".into()))
         })
         .post_async("/upload", |mut req, ctx| async move {
             let headers = req.headers();
