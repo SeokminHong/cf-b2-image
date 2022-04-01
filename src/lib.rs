@@ -16,8 +16,8 @@ fn log_request(req: &Request) {
     );
 }
 
-async fn get_image<D>(
-    ctx: &RouteContext<D>,
+async fn get_image(
+    ctx: &RouteContext<worker::Context>,
     image: &str,
     queries: HashMap<String, String>,
 ) -> error::Result<Response> {

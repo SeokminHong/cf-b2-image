@@ -1,6 +1,7 @@
 use std::io::Cursor;
 use std::str;
 
+use image::{DynamicImage, ImageFormat};
 use serde::{Deserialize, Serialize};
 use worker::wasm_bindgen::JsValue;
 use worker::*;
@@ -52,42 +53,14 @@ pub async fn upload(
 
     console_log!("Width: {}, Variants: {:?}", width, variants);
 
-    let async_image = image.clone();
-    let async_variants = variants.clone();
-    let async_auth = auth.clone();
-    let async_mime = mime.clone();
-    let async_name = name.clone();
-    let async_ext = ext.clone();
-    ctx.data.wait_until(async move {
-        let mut jobs = vec![];
-        for w in async_variants.iter() {
-            jobs.push(async {
-                let resized = util::resize(&async_image, *w);
-                let mut writer = Cursor::new(Vec::new());
-                let ret = resized.write_to(&mut writer, format);
-                if ret.is_err() {
-                    return;
-                }
-                console_log!("Resize to {}", *w);
-                let ret = upload_file(
-                    &writer.into_inner(),
-                    &async_auth,
-                    &async_mime,
-                    &async_name,
-                    &w.to_string(),
-                    &async_ext,
-                )
-                .await;
-
-                if ret.is_err() {
-                    console_log!("Failed to upload image variant: {}", *w);
-                } else {
-                    console_log!("Uploaded image variant: {}", *w);
-                }
-            })
-        }
-        futures::future::join_all(jobs).await;
-    });
+    upload_variants(
+        ctx,
+        auth.clone(),
+        image.clone(),
+        variants.clone(),
+        filename.to_string(),
+        format,
+    );
     let mut writer = Cursor::new(Vec::new());
     image.write_to(&mut writer, format)?;
     let res = upload_file(&writer.into_inner(), &auth, &mime, &name, "orig", &ext).await?;
@@ -170,4 +143,49 @@ pub async fn upload_file(
     console_log!("Upload result: {:?}", res);
 
     res.map_err(|e| e.into())
+}
+
+fn upload_variants(
+    ctx: &RouteContext<worker::Context>,
+    auth: AuthResponse,
+    image: DynamicImage,
+    variants: Vec<u32>,
+    filename: String,
+    format: ImageFormat,
+) {
+    ctx.data.wait_until(async move {
+        let (name, ext) =
+            util::get_filename_and_ext(&filename, &format).expect("Unsupported format");
+        let mime = mime_guess::from_ext(&ext)
+            .first_or_octet_stream()
+            .to_string();
+        let mut jobs = vec![];
+        for w in variants.iter() {
+            jobs.push(async {
+                let resized = util::resize(&image, *w);
+                let mut writer = Cursor::new(Vec::new());
+                let ret = resized.write_to(&mut writer, format);
+                if ret.is_err() {
+                    return;
+                }
+                console_log!("Resize to {}", *w);
+                let ret = upload_file(
+                    &writer.into_inner(),
+                    &auth,
+                    &mime,
+                    &name,
+                    &w.to_string(),
+                    &ext,
+                )
+                .await;
+
+                if ret.is_err() {
+                    console_log!("Failed to upload image variant: {}", *w);
+                } else {
+                    console_log!("Uploaded image variant: {}", *w);
+                }
+            })
+        }
+        futures::future::join_all(jobs).await;
+    });
 }

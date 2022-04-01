@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum Error {
     InternalError(Box<dyn std::error::Error>),
     AuthError(String),
