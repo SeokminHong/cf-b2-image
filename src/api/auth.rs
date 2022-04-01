@@ -28,9 +28,9 @@ pub async fn authorize<D>(ctx: &RouteContext<D>) -> Result<AuthResponse> {
 
 async fn authorize_impl<D>(ctx: &RouteContext<D>) -> Result<AuthResponse> {
     let kv = ctx.kv(CREDENTIAL_NS)?;
-    if let Some(auth) = kv.get(CREDENTIAL_KEY).await? {
+    if let Some(auth) = kv.get(CREDENTIAL_KEY).json::<AuthResponse>().await? {
         console_log!("Auth cache hit!");
-        return Ok(auth.as_json::<AuthResponse>()?);
+        return Ok(auth);
     }
 
     let mut init = RequestInit::new();

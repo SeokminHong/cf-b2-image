@@ -11,12 +11,12 @@ use crate::error::{Error, Result};
 pub async fn get<D>(ctx: &RouteContext<D>, filename: &str, width: Option<u32>) -> Result<Response> {
     let auth = authorize(ctx).await?;
 
-    let mut image_info: ImageInfo = ctx
+    let mut image_info = ctx
         .kv(IMAGE_NS)?
         .get(filename)
+        .json::<ImageInfo>()
         .await?
-        .ok_or_else(|| Error::InternalError("File not found.".into()))?
-        .as_json()?;
+        .ok_or_else(|| Error::InternalError("File not found.".into()))?;
     console_log!("Image info: {:?}", image_info);
     let format = image::ImageFormat::from_extension(&image_info.format).expect("Invalid format");
 
