@@ -25,7 +25,11 @@ pub struct UploadFileResponse {
     pub file_name: String,
 }
 
-pub async fn upload<D>(ctx: &RouteContext<D>, file: Vec<u8>, filename: &str) -> Result<String> {
+pub async fn upload(
+    ctx: &RouteContext<worker::Context>,
+    file: Vec<u8>,
+    filename: &str,
+) -> Result<String> {
     let auth = authorize(ctx).await?;
 
     let format = image::guess_format(&file)?;
@@ -48,27 +52,42 @@ pub async fn upload<D>(ctx: &RouteContext<D>, file: Vec<u8>, filename: &str) -> 
 
     console_log!("Width: {}, Variants: {:?}", width, variants);
 
-    for w in variants.iter() {
-        let resized = util::resize(&image, *w);
-        let mut writer = Cursor::new(Vec::new());
-        resized.write_to(&mut writer, format)?;
-        console_log!("Resize to {}", *w);
-        let ret = upload_file(
-            &writer.into_inner(),
-            &auth,
-            &mime,
-            &name,
-            &w.to_string(),
-            &ext,
-        )
-        .await;
+    let async_image = image.clone();
+    let async_variants = variants.clone();
+    let async_auth = auth.clone();
+    let async_mime = mime.clone();
+    let async_name = name.clone();
+    let async_ext = ext.clone();
+    ctx.data.wait_until(async move {
+        let mut jobs = vec![];
+        for w in async_variants.iter() {
+            jobs.push(async {
+                let resized = util::resize(&async_image, *w);
+                let mut writer = Cursor::new(Vec::new());
+                let ret = resized.write_to(&mut writer, format);
+                if ret.is_err() {
+                    return;
+                }
+                console_log!("Resize to {}", *w);
+                let ret = upload_file(
+                    &writer.into_inner(),
+                    &async_auth,
+                    &async_mime,
+                    &async_name,
+                    &w.to_string(),
+                    &async_ext,
+                )
+                .await;
 
-        if ret.is_err() {
-            console_log!("Failed to upload image variant: {}", w);
-        } else {
-            console_log!("Uploaded image variant: {}", w);
+                if ret.is_err() {
+                    console_log!("Failed to upload image variant: {}", *w);
+                } else {
+                    console_log!("Uploaded image variant: {}", *w);
+                }
+            })
         }
-    }
+        futures::future::join_all(jobs).await;
+    });
     let mut writer = Cursor::new(Vec::new());
     image.write_to(&mut writer, format)?;
     let res = upload_file(&writer.into_inner(), &auth, &mime, &name, "orig", &ext).await?;

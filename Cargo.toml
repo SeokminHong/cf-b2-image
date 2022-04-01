@@ -23,6 +23,7 @@ image = { version = "0.24.1", default-features = false, features = [
 mime_guess = "2.0.4"
 sha-1 = "0.10.0"
 base64 = "0.13.0"
+futures = "0.3.21"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
