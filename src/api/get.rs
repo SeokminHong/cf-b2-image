@@ -33,20 +33,36 @@ pub async fn get<D>(ctx: &RouteContext<D>, filename: &str, width: Option<u32>) -
                     Err(Error::InternalError("Original image not found.".into()))
                 } else {
                     let buffer = res.bytes().await?;
+                    console_log!(
+                        "Try to load image: {} bytes, {}",
+                        buffer.len(),
+                        format.extensions_str().first().unwrap()
+                    );
                     let image = image::load_from_memory_with_format(&buffer, format)?;
                     let resized = util::resize(&image, w);
                     let mut writer = Cursor::new(Vec::new());
                     resized.write_to(&mut writer, format)?;
-                    let buffer = writer.into_inner();
 
-                    upload::upload(ctx, buffer.clone(), filename).await?;
+                    let new_buffer = writer.into_inner();
+                    let mime = mime_guess::from_ext(&image_info.format)
+                        .first_or_octet_stream()
+                        .to_string();
+                    upload::upload_file(
+                        &new_buffer,
+                        &auth,
+                        &mime,
+                        &image_info.name,
+                        &w.to_string(),
+                        &image_info.format,
+                    )
+                    .await?;
                     image_info.variants.push(w);
                     let kv_data = serde_json::to_string(&image_info)?;
 
                     // Update KV variant
                     ctx.kv(IMAGE_NS)?.put(filename, kv_data)?.execute().await?;
 
-                    Response::from_bytes(buffer).map_err(|e| e.into())
+                    Response::from_bytes(new_buffer).map_err(|e| e.into())
                 }
             }
         }

@@ -20,7 +20,7 @@ struct UploadUrlResponse {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-struct UploadFileResponse {
+pub struct UploadFileResponse {
     pub file_id: String,
     pub file_name: String,
 }
@@ -117,7 +117,7 @@ async fn get_upload_url(auth: &AuthResponse) -> Result<UploadUrlResponse> {
         .map_err(|e| e.into())
 }
 
-async fn upload_file(
+pub async fn upload_file(
     file: &[u8],
     auth: &AuthResponse,
     mime: &str,
