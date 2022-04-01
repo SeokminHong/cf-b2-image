@@ -4,7 +4,7 @@
 - [x] Upload resized variants of the image and upload them
 - [x] Implement GET request
 - [ ] Cache images by using Cloudflare Cache API
-- [ ] Make jobs asynchronously
+- [x] Parallel uploading
 - [ ] Implement detailed responses
 - [ ] Authorize POST request
 
