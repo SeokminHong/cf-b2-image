@@ -1,4 +1,4 @@
-# Cloudflare & B2 Image Router
+# Cloudflare & B2 Image
 
 - [x] Upload a posted image on B2
 - [x] Upload resized variants of the image and upload them
@@ -44,3 +44,9 @@ wrangler secret put BUCKET_ID
 wrangler secret put BUCKET_KEY
 wrangler publish
 ```
+
+## Usage
+
+You can request the uploaded image, and also can query a variant by `width` query parameter.
+
+`https://{your_worker_url}/images/{image_name}?width={width}/`
